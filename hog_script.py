@@ -1,41 +1,44 @@
-import cv2 as cv
+import cv2
 import numpy as np
 import os
 
 path = 'examples'
+sift = cv2.SIFT_create(nfeatures=1000)
 
 images = []
-classNames = []
-myList = os.listdir(path)
-print('Total Classes Detected', len(myList))
-for cl in myList:
-    imgCur = cv.imread(f'{path}/{cl}', 0)
-    images.append(imgCur)
-    classNames.append(os.path.splitext(cl)[0])
-print(classNames)
+class_names = []
+my_list = os.listdir(path)
 
-def findDes(images): 
-    desList = []
-    cell_size = (16, 16)  
-    block_size = (2, 2)  
+for my_class in my_list:
+    img_curr = cv2.imread(f'{path}/{my_class}', 0)
+    images.append(img_curr)
+    class_names.append(os.path.splitext(my_class)[0])
+
+
+def find_descriptor(images):
+    descriptor_list = []
+    cell_size = (16, 16)
+    block_size = (2, 2)
     nbins = 9
     for img in images:
-        hog = cv.HOGDescriptor(_winSize=(img.shape[1] // cell_size[1] * cell_size[1],
-                                      img.shape[0] // cell_size[0] * cell_size[0]),
-                            _blockSize=(block_size[1] * cell_size[1],
-                                        block_size[0] * cell_size[0]),
-                            _blockStride=(cell_size[1], cell_size[0]),
-                            _cellSize=(cell_size[1], cell_size[0]),
-                            _nbins=nbins)
+        hog = cv2.HOGDescriptor(_winSize=(img.shape[1] // cell_size[1] * cell_size[1],
+                                          img.shape[0] // cell_size[0] * cell_size[0]),
+                                _blockSize=(block_size[1] * cell_size[1],
+                                            block_size[0] * cell_size[0]),
+                                _blockStride=(cell_size[1], cell_size[0]),
+                                _cellSize=(cell_size[1], cell_size[0]),
+                                _nbins=nbins)
         hist = hog.compute(img)
-        desList.append(hist)
-    return desList
+        descriptor_list.append(hist)
+    return descriptor_list
 
-def findID(img, desList, thres = 15): 
-    cell_size = (16, 16)  
-    block_size = (2, 2)  
+
+def find_id(img, descriptor_list, thres=15):
+    cell_size = (16, 16)
+    block_size = (2, 2)
     nbins = 9
-    hog = cv.HOGDescriptor(_winSize=(img.shape[1] // cell_size[1] * cell_size[1],
+
+    hog = cv2.HOGDescriptor(_winSize=(img.shape[1] // cell_size[1] * cell_size[1],
                                       img.shape[0] // cell_size[0] * cell_size[0]),
                             _blockSize=(block_size[1] * cell_size[1],
                                         block_size[0] * cell_size[0]),
@@ -43,44 +46,39 @@ def findID(img, desList, thres = 15):
                             _cellSize=(cell_size[1], cell_size[0]),
                             _nbins=nbins)
     hist = hog.compute(img)
-    bf = cv.BFMatcher()
-    matchList = []
-    finalVal = -1
-    try: 
-        for des in desList: 
+    
+    bf = cv2.BFMatcher()
+    match_list = []
+    final_value = -1
+    try:
+        for des in descriptor_list:
             matches = bf.knnMatch(des, hist, k=2)
             good = []
-            for m,n in matches: 
-                if m.distance < 0.75 * n.distance: 
+            for m, n in matches:
+                if m.distance < 0.75 * n.distance:
                     good.append([m])
-            matchList.append(len(good))
-    except: 
+            match_list.append(len(good))
+    except:
         pass
-    
-    if len(matchList) != 0 :
-        if max(matchList) > thres : 
-            finalVal = matchList.index(max(matchList))
-    return finalVal
 
-desList = findDes(images)
-print(len(desList))
+    if len(match_list) != 0:
+        if max(match_list) > thres:
+            final_value = match_list.index(max(match_list))
+    return final_value
 
-captura = cv.VideoCapture('Videos/Video 1.mp4')
+
+descriptor_list = find_descriptor(images)
+
+cap = cv2.VideoCapture(0)
 
 while True:
-    ret, imagen = captura.read()
+    succes, img2 = cap.read()
+    img_original = img2.copy()
+    img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
 
-    id = findID(imagen, desList)
-    
+    id = find_id(img2, descriptor_list)
     if id != -1:
-        cv.putText(imagen, classNames[id], (50,50), cv.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 2)
-
-    if ret == True:
-        cv.imshow('Video', imagen)
-        #Presionar tecla ESC para salir
-        if cv.waitKey(20) & 0xFF == 27:
-            break
-    else:
-        break
-captura.release()
-cv.destroyAllWindows()
+        cv2.putText(
+            img_original, class_names[id], (50, 50), cv2.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
+    cv2.imshow('img2', img_original)
+    cv2.waitKey(1)
