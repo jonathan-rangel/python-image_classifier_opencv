@@ -3,7 +3,7 @@ import numpy as np
 import os
 
 path = 'examples'
-orb = cv2.ORB_create(nfeatures=1000)
+sift = cv2.SIFT_create(nfeatures=1000)
 
 images = []
 class_names = []
@@ -18,13 +18,13 @@ for my_class in my_list:
 def find_descriptor(images):
     descriptor_list = []
     for img in images:
-        kp, des = orb.detectAndCompute(img, None)
+        kp, des = sift.detectAndCompute(img, None)
         descriptor_list.append(des)
     return descriptor_list
 
 
 def find_id(img, descriptor_list, thres=15):
-    kp2, des2 = orb.detectAndCompute(img, None)
+    kp2, des2 = sift.detectAndCompute(img, None)
 
     bf = cv2.BFMatcher()
     match_list = []
