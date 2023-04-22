@@ -1,70 +1,86 @@
-import cv2
+import cv2 as cv
 import numpy as np
 import os
 
 path = 'examples'
 
-winSize = (64, 64)
-blockSize = (16, 16)
-blockStride = (8, 8)
-cellSize = (8, 8)
-nbins = 9
-
-hog = cv2.HOGDescriptor(winSize, blockSize, blockStride, cellSize, nbins)
-
 images = []
-class_names = []
-my_list = os.listdir(path)
+classNames = []
+myList = os.listdir(path)
+print('Total Classes Detected', len(myList))
+for cl in myList:
+    imgCur = cv.imread(f'{path}/{cl}', 0)
+    images.append(imgCur)
+    classNames.append(os.path.splitext(cl)[0])
+print(classNames)
 
-for my_class in my_list:
-    img_curr = cv2.imread(f'{path}/{my_class}', 0)
-    images.append(img_curr)
-    class_names.append(os.path.splitext(my_class)[0])
-
-
-def find_descriptor(images):
-    descriptor_list = []
+def findDes(images): 
+    desList = []
+    cell_size = (16, 16)  
+    block_size = (2, 2)  
+    nbins = 9
     for img in images:
-        des = hog.compute(img, None)
-        descriptor_list.append(des)
-    return descriptor_list
+        hog = cv.HOGDescriptor(_winSize=(img.shape[1] // cell_size[1] * cell_size[1],
+                                      img.shape[0] // cell_size[0] * cell_size[0]),
+                            _blockSize=(block_size[1] * cell_size[1],
+                                        block_size[0] * cell_size[0]),
+                            _blockStride=(cell_size[1], cell_size[0]),
+                            _cellSize=(cell_size[1], cell_size[0]),
+                            _nbins=nbins)
+        hist = hog.compute(img)
+        desList.append(hist)
+    return desList
 
-
-def find_id(img, descriptor_list, thres=15):
-    des2 = hog.compute(img, None)
-
-    bf = cv2.BFMatcher()
-    match_list = []
-    final_value = -1
-    try:
-        for des in descriptor_list:
-            matches = bf.knnMatch(des, des2, k=2)
+def findID(img, desList, thres = 15): 
+    cell_size = (16, 16)  
+    block_size = (2, 2)  
+    nbins = 9
+    hog = cv.HOGDescriptor(_winSize=(img.shape[1] // cell_size[1] * cell_size[1],
+                                      img.shape[0] // cell_size[0] * cell_size[0]),
+                            _blockSize=(block_size[1] * cell_size[1],
+                                        block_size[0] * cell_size[0]),
+                            _blockStride=(cell_size[1], cell_size[0]),
+                            _cellSize=(cell_size[1], cell_size[0]),
+                            _nbins=nbins)
+    hist = hog.compute(img)
+    bf = cv.BFMatcher()
+    matchList = []
+    finalVal = -1
+    try: 
+        for des in desList: 
+            matches = bf.knnMatch(des, hist, k=2)
             good = []
-            for m, n in matches:
-                if m.distance < 0.75 * n.distance:
+            for m,n in matches: 
+                if m.distance < 0.75 * n.distance: 
                     good.append([m])
-            match_list.append(len(good))
-    except:
+            matchList.append(len(good))
+    except: 
         pass
+    
+    if len(matchList) != 0 :
+        if max(matchList) > thres : 
+            finalVal = matchList.index(max(matchList))
+    return finalVal
 
-    if len(match_list) != 0:
-        if max(match_list) > thres:
-            final_value = match_list.index(max(match_list))
-    return final_value
+desList = findDes(images)
+print(len(desList))
 
-
-descriptor_list = find_descriptor(images)
-
-cap = cv2.VideoCapture(0)
+captura = cv.VideoCapture('Videos/Video 1.mp4')
 
 while True:
-    succes, img2 = cap.read()
-    img_original = img2.copy()
-    img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+    ret, imagen = captura.read()
 
-    id = find_id(img2, descriptor_list)
+    id = findID(imagen, desList)
+    
     if id != -1:
-        cv2.putText(
-            img_original, class_names[id], (50, 50), cv2.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
-    cv2.imshow('img2', img_original)
-    cv2.waitKey(1)
+        cv.putText(imagen, classNames[id], (50,50), cv.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 2)
+
+    if ret == True:
+        cv.imshow('Video', imagen)
+        #Presionar tecla ESC para salir
+        if cv.waitKey(20) & 0xFF == 27:
+            break
+    else:
+        break
+captura.release()
+cv.destroyAllWindows()
