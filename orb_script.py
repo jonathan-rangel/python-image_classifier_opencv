@@ -58,7 +58,7 @@ while True:
     id = find_id(img2, descriptor_list)
     if id != -1:
         cv2.putText(
-            img_original, class_names[id], 50, 50, cv2.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
+            img_original, class_names[id], (50, 50), cv2.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
     cv2.imshow('img2', img_original)
     cv2.waitKey(1)
-
+0
